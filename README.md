@@ -1,54 +1,67 @@
-# Monitoramento de CO₂ com ESP32, ThingSpeak e Alertas via WhatsApp
+# Monitoramento de CO₂, Temperatura e Umidade com ESP32
 
-Este projeto implementa um sistema de monitoramento de qualidade do ar utilizando o sensor MQ135 para medição de CO₂, juntamente com um sensor DHT22 para temperatura e umidade. Os dados são enviados periodicamente para a plataforma ThingSpeak e, em caso de níveis elevados de CO₂, um alerta é enviado automaticamente via WhatsApp.
+Este projeto consiste em um sistema robusto de monitoramento ambiental focado na detecção de níveis de **Dióxido de Carbono (CO₂)**. O software foi desenvolvido com foco em **tolerância a falhas**, garantindo que, mesmo em quedas de conectividade, os dados sejam armazenados localmente e sincronizados posteriormente.
 
-O firmware foi desenvolvido com foco em **tolerância a falhas**, garantindo que nenhuma leitura seja perdida mesmo em situações de instabilidade de rede.
+## 🚀 Funcionalidades
 
-## 📋 Funcionalidades
+* **Leitura de Sensores:** Monitoramento de CO₂ (MQ135), Temperatura e Umidade (DHT22).
+* **Integração IoT:** Envio de dados em tempo real para o dashboard do **ThingSpeak**.
+* **Alertas Instantâneos:** Notificações automáticas via **WhatsApp** (CallMeBot) quando o sistema está ativo.
+* **Resiliência de Dados:** Sistema de buffer local utilizando **SPIFFS** (memória flash interna) para armazenar leituras caso o Wi-Fi esteja indisponível.
+* **Sincronização NTP:** Registro de data e hora (timestamp) real em todas as medições.
+* **Recuperação Automática:** Processamento de logs pendentes assim que a conexão é restabelecida.
 
-- Leitura dos sensores:
-  - CO₂ (MQ135)
-  - Temperatura e umidade (DHT22)
-- Envio periódico dos dados para o ThingSpeak (a cada 15 minutos)
-- Alerta via WhatsApp (CallMeBot) quando o nível de CO₂ excede um limiar definido
-- **Tolerância a falhas**:
-  - Limite de 10 tentativas de conexão Wi-Fi; após falha, sistema aguarda 15 minutos antes de nova tentativa
-  - Buffer local em memória flash (SPIFFS): cada leitura é registrada em um arquivo CSV com timestamp e status de envio
-  - Reenvio automático de dados pendentes quando a conexão é restabelecida
+## 🛠️ Hardware Necessário
 
-## 🧰 Hardware Necessário
+* **Microcontrolador:** ESP32 DevKit V1
+* **Sensor de Gases:** MQ135 (CO₂)
+* **Sensor de Clima:** DHT22 (Temperatura e Umidade)
+* **Conectividade:** Rede Wi-Fi 2.4GHz
 
-- Microcontrolador ESP32 (qualquer modelo com suporte ao Arduino core)
-- Sensor MQ135
-- Sensor DHT22
-- Protoboard e jumpers
-- Fonte de alimentação (USB ou bateria)
 
-### Conexões
 
-| Componente | Pino ESP32 |
-|------------|------------|
-| MQ135 (pino analógico) | GPIO 34 |
-| DHT22 (data) | GPIO 2 |
-| VCC (ambos) | 3.3V |
-| GND (ambos) | GND |
+## 📋 Pré-requisitos e Bibliotecas
 
-## 📦 Dependências e Bibliotecas
+O projeto utiliza as seguintes bibliotecas (configuradas no `platformio.ini` fornecido):
 
-O projeto é desenvolvido no PlatformIO com framework Arduino. As seguintes bibliotecas são necessárias:
+* `ThingSpeak`: Comunicação com a plataforma de IoT.
+* `UrlEncode`: Formatação de mensagens para a API do WhatsApp.
+* `DHT sensor library`: Comunicação com o sensor de temperatura.
+* `SPIFFS` & `WiFi`: Bibliotecas nativas do framework Arduino para ESP32.
 
-- `WiFi.h` – nativa do ESP32
-- `HTTPClient.h` – nativa do ESP32
-- `SPIFFS.h` – nativa do ESP32 (sistema de arquivos)
-- `UrlEncode` – para codificação de mensagens WhatsApp ([plageoj/UrlEncode](https://github.com/plageoj/UrlEncode))
-- (Opcional) `DHT sensor library` da Adafruit – caso prefira usar a biblioteca em vez da leitura manual
+## ⚙️ Configuração
 
-No arquivo `platformio.ini` as dependências já estão listadas:
+Para rodar o projeto, edite as seguintes variáveis no código:
 
-```ini
-lib_deps = 
-    mathworks/ThingSpeak@^2.0.0
-    adafruit/Adafruit GFX Library@^1.11.11
-    adafruit/Adafruit SSD1306@^2.5.13
-    plageoj/UrlEncode@^1.0.1
-    adafruit/DHT sensor library@^1.4.6
+1.  **Wi-Fi:** `SSID_REDE` e `SENHA_REDE`.
+2.  **ThingSpeak:** `chave_escrita_thingspeak`.
+3.  **WhatsApp:** `phoneNumber1` (ex: +55...) e `apiKey` (obtida com o bot).
+
+## 📉 Lógica de Funcionamento
+
+O sistema opera em um ciclo de **15 minutos** (900.000 ms) para evitar sobrecarga de dados:
+
+1.  **Coleta:** Realiza a leitura dos sensores e gera um timestamp via NTP.
+2.  **Conexão:** Tenta conectar ao Wi-Fi (limite de 10 tentativas).
+3.  **Fluxo de Sucesso:**
+    * Envia os dados para o ThingSpeak.
+    * Dispara o alerta de WhatsApp.
+    * Salva no log local como `enviado`.
+    * Verifica se existem dados `pendentes` no histórico e tenta sincronizá-los.
+4.  **Fluxo de Contingência:**
+    * Em caso de falha de Wi-Fi, salva o registro como `pendente` no arquivo `dados.csv`.
+    * Entra em modo de espera de rede por 15 minutos para economizar recursos antes da próxima tentativa.
+
+## 📁 Estrutura do Log (SPIFFS)
+
+Os dados são salvos no formato CSV:
+`Timestamp, CO2(ppm), Temperatura(°C), Umidade(%), Status`
+
+Exemplo:
+`2025-06-11 14:30:05, 450.20, 25.5, 60.0, enviado`
+
+---
+
+## 👩‍💻 Informações do Projeto
+* **Última Atualização:** 11/06/2025.
+* **Ambiente de Desenvolvimento:** PlatformIO / CLion JetBrains.
